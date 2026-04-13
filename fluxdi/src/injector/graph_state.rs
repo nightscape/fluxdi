@@ -64,6 +64,25 @@ impl Injector {
         }
     }
 
+    #[cfg(feature = "dynamic")]
+    fn local_graph_dynamic_providers(
+        &self,
+    ) -> HashMap<String, crate::graph::DynamicProviderGraphMeta> {
+        #[cfg(not(feature = "lock-free"))]
+        {
+            self.inner.graph_dynamic_providers.read().unwrap().clone()
+        }
+
+        #[cfg(feature = "lock-free")]
+        {
+            self.inner
+                .graph_dynamic_providers
+                .iter()
+                .map(|entry| (entry.key().clone(), entry.value().clone()))
+                .collect()
+        }
+    }
+
     pub(super) fn collect_graph_state(&self, state: &mut GraphBuildState) {
         if let Some(parent) = &self.inner.parent {
             let parent_injector = Injector {
@@ -82,6 +101,11 @@ impl Injector {
 
         for (type_id, metas) in self.local_graph_set_providers() {
             state.sets.entry(type_id).or_default().extend(metas);
+        }
+
+        #[cfg(feature = "dynamic")]
+        for (name, meta) in self.local_graph_dynamic_providers() {
+            state.dynamics.insert(name, meta);
         }
     }
 }

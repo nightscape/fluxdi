@@ -13,6 +13,7 @@ pub struct GraphDependency {
     pub type_name: String,
     pub name: Option<String>,
     pub cardinality: DependencyCardinality,
+    pub is_dynamic: bool,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -20,6 +21,7 @@ pub enum GraphBinding {
     Single,
     Named(String),
     Set(usize),
+    Dynamic(String),
 }
 
 impl GraphBinding {
@@ -28,6 +30,7 @@ impl GraphBinding {
             Self::Single => "single".to_string(),
             Self::Named(name) => format!("named:{name}"),
             Self::Set(index) => format!("set:{index}"),
+            Self::Dynamic(name) => format!("dynamic:{name}"),
         }
     }
 }
@@ -183,6 +186,7 @@ pub(crate) struct DependencyHint {
     pub(crate) type_name: &'static str,
     pub(crate) name: Option<String>,
     pub(crate) cardinality: DependencyCardinality,
+    pub(crate) is_dynamic: bool,
 }
 
 impl DependencyHint {
@@ -195,6 +199,7 @@ impl DependencyHint {
             type_name: std::any::type_name::<T>(),
             name: None,
             cardinality: DependencyCardinality::One,
+            is_dynamic: false,
         }
     }
 
@@ -207,6 +212,7 @@ impl DependencyHint {
             type_name: std::any::type_name::<T>(),
             name: Some(name),
             cardinality: DependencyCardinality::One,
+            is_dynamic: false,
         }
     }
 
@@ -219,6 +225,17 @@ impl DependencyHint {
             type_name: std::any::type_name::<T>(),
             name: None,
             cardinality: DependencyCardinality::All,
+            is_dynamic: false,
+        }
+    }
+
+    pub(crate) fn dynamic(name: String) -> Self {
+        Self {
+            type_id: TypeId::of::<()>(),
+            type_name: "<dynamic>",
+            name: Some(name),
+            cardinality: DependencyCardinality::One,
+            is_dynamic: true,
         }
     }
 }
@@ -243,4 +260,11 @@ impl ProviderGraphMeta {
             dependencies,
         }
     }
+}
+
+#[derive(Clone, Debug)]
+pub(crate) struct DynamicProviderGraphMeta {
+    pub(crate) name: String,
+    pub(crate) scope: Scope,
+    pub(crate) dependencies: Vec<DependencyHint>,
 }

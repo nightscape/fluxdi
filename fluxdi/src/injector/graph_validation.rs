@@ -34,6 +34,7 @@ impl Injector {
                         type_name: dep.type_name.to_string(),
                         name: dep.name.clone(),
                         cardinality: dep.cardinality,
+                        is_dynamic: dep.is_dynamic,
                     })
                     .collect(),
             });
@@ -61,6 +62,7 @@ impl Injector {
                         type_name: dep.type_name.to_string(),
                         name: dep.name.clone(),
                         cardinality: dep.cardinality,
+                        is_dynamic: dep.is_dynamic,
                     })
                     .collect(),
             });
@@ -96,6 +98,48 @@ impl Injector {
                             type_name: dep.type_name.to_string(),
                             name: dep.name.clone(),
                             cardinality: dep.cardinality,
+                            is_dynamic: dep.is_dynamic,
+                        })
+                        .collect(),
+                });
+            }
+        }
+
+        #[cfg(feature = "dynamic")]
+        let mut dynamic_ids: HashMap<String, String> = HashMap::new();
+
+        #[cfg(feature = "dynamic")]
+        {
+            let mut dynamics: Vec<(String, crate::graph::DynamicProviderGraphMeta)> =
+                state.dynamics.into_iter().collect();
+            dynamics.sort_by(|(a_name, _), (b_name, _)| a_name.cmp(b_name));
+
+            for (_key, meta) in dynamics {
+                let node_id = format!("dynamic::{}", meta.name);
+                dynamic_ids.insert(meta.name.clone(), node_id.clone());
+                meta_by_node.insert(
+                    node_id.clone(),
+                    ProviderGraphMeta {
+                        type_id: std::any::TypeId::of::<()>(),
+                        type_name: "<dynamic>",
+                        scope: meta.scope,
+                        dependencies: meta.dependencies.clone(),
+                    },
+                );
+
+                nodes.push(GraphNode {
+                    id: node_id,
+                    type_name: meta.name.clone(),
+                    scope: meta.scope,
+                    binding: GraphBinding::Dynamic(meta.name),
+                    dependencies: meta
+                        .dependencies
+                        .iter()
+                        .map(|dep| GraphDependency {
+                            type_name: dep.type_name.to_string(),
+                            name: dep.name.clone(),
+                            cardinality: dep.cardinality,
+                            is_dynamic: dep.is_dynamic,
                         })
                         .collect(),
                 });
@@ -110,23 +154,39 @@ impl Injector {
             };
 
             for dep in &meta.dependencies {
-                let targets: Vec<String> = match dep.cardinality {
-                    DependencyCardinality::One => {
-                        if let Some(name) = dep.name.clone() {
-                            named_ids
-                                .get(&NamedTypeKey {
-                                    type_id: dep.type_id,
-                                    name,
-                                })
-                                .cloned()
-                                .into_iter()
-                                .collect()
-                        } else {
-                            single_ids.get(&dep.type_id).cloned().into_iter().collect()
-                        }
+                let targets: Vec<String> = if dep.is_dynamic {
+                    #[cfg(feature = "dynamic")]
+                    {
+                        dep.name
+                            .as_ref()
+                            .and_then(|name| dynamic_ids.get(name))
+                            .cloned()
+                            .into_iter()
+                            .collect()
                     }
-                    DependencyCardinality::All => {
-                        set_ids.get(&dep.type_id).cloned().unwrap_or_default()
+                    #[cfg(not(feature = "dynamic"))]
+                    {
+                        Vec::new()
+                    }
+                } else {
+                    match dep.cardinality {
+                        DependencyCardinality::One => {
+                            if let Some(name) = dep.name.clone() {
+                                named_ids
+                                    .get(&NamedTypeKey {
+                                        type_id: dep.type_id,
+                                        name,
+                                    })
+                                    .cloned()
+                                    .into_iter()
+                                    .collect()
+                            } else {
+                                single_ids.get(&dep.type_id).cloned().into_iter().collect()
+                            }
+                        }
+                        DependencyCardinality::All => {
+                            set_ids.get(&dep.type_id).cloned().unwrap_or_default()
+                        }
                     }
                 };
 

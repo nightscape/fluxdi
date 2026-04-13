@@ -78,6 +78,17 @@ impl<T: ?Sized + 'static> Provider<T> {
         self
     }
 
+    /// Declares that this provider depends on a dynamic provider by name.
+    ///
+    /// This hint bridges typed providers into the dynamic dependency graph,
+    /// enabling correct ordering in `resolve_all_eager()` and proper
+    /// validation in `validate_graph()`.
+    pub fn with_dynamic_dependency(mut self, name: impl Into<String>) -> Self {
+        self.dependency_hints
+            .push(DependencyHint::dynamic(name.into()));
+        self
+    }
+
     /// Wraps resolved instances with a decorator (e.g. logging, caching).
     ///
     /// The decorator receives the base instance and returns a wrapped instance.

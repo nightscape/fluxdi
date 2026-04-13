@@ -45,6 +45,8 @@ opentelemetry = [
 debug = []
 macros = ["dep:fluxdi-macros"]
 lifecycle = ["dep:tokio"]
+dynamic = ["thread-safe", "async-factory"]
+eager-resolution = ["thread-safe", "async-factory"]
 
 [dev-dependencies]
 futures = "0.3.31"

@@ -3,6 +3,8 @@ pub mod actix;
 pub mod application;
 #[cfg(feature = "axum")]
 pub mod axum;
+#[cfg(feature = "dynamic")]
+pub mod dynamic;
 pub mod error;
 pub mod graph;
 pub mod injector;
@@ -17,6 +19,8 @@ pub mod scope;
 pub use application::*;
 #[cfg(feature = "axum")]
 pub use axum::*;
+#[cfg(feature = "dynamic")]
+pub use dynamic::*;
 pub use error::*;
 #[cfg(feature = "macros")]
 pub use fluxdi_macros::Injectable;

@@ -60,6 +60,22 @@ impl Injector {
                 set_instances: DashMap::new(),
                 #[cfg(all(feature = "thread-safe", feature = "lock-free"))]
                 named_instances: DashMap::new(),
+                #[cfg(all(feature = "dynamic", not(feature = "lock-free")))]
+                dynamic_providers: Store::new(HashMap::new()),
+                #[cfg(all(feature = "dynamic", not(feature = "lock-free")))]
+                graph_dynamic_providers: Store::new(HashMap::new()),
+                #[cfg(all(feature = "dynamic", not(feature = "lock-free")))]
+                dynamic_instances: Store::new(HashMap::new()),
+                #[cfg(all(feature = "dynamic", feature = "lock-free"))]
+                dynamic_providers: DashMap::new(),
+                #[cfg(all(feature = "dynamic", feature = "lock-free"))]
+                graph_dynamic_providers: DashMap::new(),
+                #[cfg(all(feature = "dynamic", feature = "lock-free"))]
+                dynamic_instances: DashMap::new(),
+                #[cfg(all(feature = "eager-resolution", not(feature = "lock-free")))]
+                eager_resolvers: Store::new(HashMap::new()),
+                #[cfg(all(feature = "eager-resolution", feature = "lock-free"))]
+                eager_resolvers: DashMap::new(),
                 #[cfg(feature = "metrics")]
                 metrics: Shared::new(MetricsState::default()),
             }),
@@ -125,6 +141,22 @@ impl Injector {
                 set_instances: DashMap::new(),
                 #[cfg(all(feature = "thread-safe", feature = "lock-free"))]
                 named_instances: DashMap::new(),
+                #[cfg(all(feature = "dynamic", not(feature = "lock-free")))]
+                dynamic_providers: Store::new(HashMap::new()),
+                #[cfg(all(feature = "dynamic", not(feature = "lock-free")))]
+                graph_dynamic_providers: Store::new(HashMap::new()),
+                #[cfg(all(feature = "dynamic", not(feature = "lock-free")))]
+                dynamic_instances: Store::new(HashMap::new()),
+                #[cfg(all(feature = "dynamic", feature = "lock-free"))]
+                dynamic_providers: DashMap::new(),
+                #[cfg(all(feature = "dynamic", feature = "lock-free"))]
+                graph_dynamic_providers: DashMap::new(),
+                #[cfg(all(feature = "dynamic", feature = "lock-free"))]
+                dynamic_instances: DashMap::new(),
+                #[cfg(all(feature = "eager-resolution", not(feature = "lock-free")))]
+                eager_resolvers: Store::new(HashMap::new()),
+                #[cfg(all(feature = "eager-resolution", feature = "lock-free"))]
+                eager_resolvers: DashMap::new(),
                 #[cfg(feature = "metrics")]
                 metrics: parent.inner.metrics.clone(),
             }),
@@ -190,6 +222,22 @@ impl Injector {
                 set_instances: DashMap::new(),
                 #[cfg(all(feature = "thread-safe", feature = "lock-free"))]
                 named_instances: DashMap::new(),
+                #[cfg(all(feature = "dynamic", not(feature = "lock-free")))]
+                dynamic_providers: Store::new(HashMap::new()),
+                #[cfg(all(feature = "dynamic", not(feature = "lock-free")))]
+                graph_dynamic_providers: Store::new(HashMap::new()),
+                #[cfg(all(feature = "dynamic", not(feature = "lock-free")))]
+                dynamic_instances: Store::new(HashMap::new()),
+                #[cfg(all(feature = "dynamic", feature = "lock-free"))]
+                dynamic_providers: DashMap::new(),
+                #[cfg(all(feature = "dynamic", feature = "lock-free"))]
+                graph_dynamic_providers: DashMap::new(),
+                #[cfg(all(feature = "dynamic", feature = "lock-free"))]
+                dynamic_instances: DashMap::new(),
+                #[cfg(all(feature = "eager-resolution", not(feature = "lock-free")))]
+                eager_resolvers: Store::new(HashMap::new()),
+                #[cfg(all(feature = "eager-resolution", feature = "lock-free"))]
+                eager_resolvers: DashMap::new(),
                 #[cfg(feature = "metrics")]
                 metrics: parent.inner.metrics.clone(),
             }),

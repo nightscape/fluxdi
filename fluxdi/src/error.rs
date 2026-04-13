@@ -54,6 +54,10 @@ pub enum ErrorKind {
     ModuleLifecycleFailed,
     /// Dependency graph validation failed.
     GraphValidationFailed,
+    /// Dynamic provider not found by name.
+    DynamicProviderNotFound,
+    /// One or more providers failed during eager resolution.
+    EagerResolutionFailed,
 }
 
 /// Container error structure.
@@ -189,6 +193,28 @@ impl Error {
             format!(
                 "Module lifecycle failed: module={}, phase={}, details={}",
                 module_name, phase, details
+            ),
+        )
+    }
+
+    /// Dynamic provider not found by name.
+    pub fn dynamic_provider_not_found(name: &str) -> Self {
+        Self::new(
+            ErrorKind::DynamicProviderNotFound,
+            format!(
+                "No dynamic provider registered with name: {}. Register it with provide_dynamic/try_provide_dynamic.",
+                name
+            ),
+        )
+    }
+
+    /// One or more providers failed during eager resolution.
+    pub fn eager_resolution_failed(provider: &str, source: &Error) -> Self {
+        Self::new(
+            ErrorKind::EagerResolutionFailed,
+            format!(
+                "Eager resolution failed for provider {}: {}",
+                provider, source.message
             ),
         )
     }

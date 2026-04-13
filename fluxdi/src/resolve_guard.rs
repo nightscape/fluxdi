@@ -1,4 +1,6 @@
-use std::{any::TypeId, cell::RefCell};
+use std::any::TypeId;
+use std::cell::RefCell;
+use std::collections::HashSet;
 
 use crate::error::{Error, ErrorKind};
 #[cfg(feature = "tracing")]
@@ -8,7 +10,7 @@ use crate::observability::EVENT_CIRCULAR_DEPENDENCY;
 use tracing::debug;
 
 thread_local! {
-    static RESOLVE_STACK: RefCell<Vec<TypeId>> = const { RefCell::new(Vec::new()) };
+    static RESOLVE_SET: RefCell<HashSet<TypeId>> = RefCell::new(HashSet::new());
 }
 
 pub struct ResolveGuard {
@@ -17,15 +19,15 @@ pub struct ResolveGuard {
 
 impl ResolveGuard {
     pub fn push(type_id: TypeId) -> Result<Self, Error> {
-        RESOLVE_STACK.with(|stack| {
-            let mut stack = stack.borrow_mut();
+        RESOLVE_SET.with(|set| {
+            let mut set = set.borrow_mut();
 
-            if stack.contains(&type_id) {
+            if set.contains(&type_id) {
                 #[cfg(feature = "tracing")]
                 debug!(
                     event = EVENT_CIRCULAR_DEPENDENCY,
                     type_id = ?type_id,
-                    depth = stack.len(),
+                    depth = set.len(),
                     "Circular dependency detected during resolve"
                 );
 
@@ -38,7 +40,7 @@ impl ResolveGuard {
                 ));
             }
 
-            stack.push(type_id);
+            set.insert(type_id);
             Ok(Self { type_id })
         })
     }
@@ -46,18 +48,8 @@ impl ResolveGuard {
 
 impl Drop for ResolveGuard {
     fn drop(&mut self) {
-        RESOLVE_STACK.with(|stack| {
-            let mut stack = stack.borrow_mut();
-            if let Some(last) = stack.pop() {
-                if last != self.type_id {
-                    panic!(
-                        "ResolveGuard stack corrupted: expected to pop {:?} but popped {:?}",
-                        self.type_id, last
-                    );
-                }
-            } else {
-                panic!("ResolveGuard stack corrupted: attempted to pop from an empty stack");
-            }
+        RESOLVE_SET.with(|set| {
+            set.borrow_mut().remove(&self.type_id);
         });
     }
 }

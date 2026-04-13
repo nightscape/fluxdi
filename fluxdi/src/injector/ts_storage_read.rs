@@ -76,6 +76,30 @@ impl Injector {
                 .insert(key, graph_meta);
         }
 
+        #[cfg(feature = "eager-resolution")]
+        {
+            let node_id = format!("named::{}::{}", type_name, name);
+            let name_owned = name.to_string();
+            let resolver: EagerResolverFn = Shared::new(
+                move |inj: Injector| -> std::pin::Pin<
+                    Box<dyn std::future::Future<Output = Result<(), Error>> + Send>,
+                > {
+                    let name = name_owned.clone();
+                    Box::pin(
+                        async move { inj.try_resolve_named_async::<T>(&name).await.map(|_| ()) },
+                    )
+                },
+            );
+            #[cfg(not(feature = "lock-free"))]
+            self.inner
+                .eager_resolvers
+                .write()
+                .unwrap()
+                .insert(node_id, resolver);
+            #[cfg(feature = "lock-free")]
+            self.inner.eager_resolvers.insert(node_id, resolver);
+        }
+
         #[cfg(feature = "tracing")]
         debug!(
             type_name = type_name,

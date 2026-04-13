@@ -4,7 +4,13 @@ use std::collections::{HashMap, HashSet};
 #[cfg(all(feature = "thread-safe", feature = "lock-free"))]
 use dashmap::{DashMap, mapref::entry::Entry as DashEntry};
 
+#[cfg(feature = "dynamic")]
+use crate::dynamic::DynamicProvider;
 use crate::error::Error;
+#[cfg(feature = "eager-resolution")]
+use crate::error::ErrorKind;
+#[cfg(feature = "dynamic")]
+use crate::graph::DynamicProviderGraphMeta;
 use crate::graph::{
     DependencyCardinality, DependencyGraph, GraphBinding, GraphDependency, GraphEdge, GraphNode,
     GraphValidationIssue, GraphValidationIssueKind, GraphValidationReport, ProviderGraphMeta,
@@ -23,6 +29,16 @@ use crate::scope::Scope;
 
 #[cfg(feature = "tracing")]
 use tracing::{debug, info_span, trace};
+
+#[cfg(feature = "eager-resolution")]
+pub(crate) type EagerResolverFn = Shared<
+    dyn Fn(
+            Injector,
+        )
+            -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<(), Error>> + Send>>
+        + Send
+        + Sync,
+>;
 
 pub struct Injector {
     inner: Shared<InjectorInner>,
@@ -69,6 +85,8 @@ struct GraphBuildState {
     singles: HashMap<TypeId, ProviderGraphMeta>,
     named: HashMap<NamedTypeKey, ProviderGraphMeta>,
     sets: HashMap<TypeId, Vec<ProviderGraphMeta>>,
+    #[cfg(feature = "dynamic")]
+    dynamics: HashMap<String, DynamicProviderGraphMeta>,
 }
 
 fn dependency_label(cardinality: DependencyCardinality, name: Option<&str>) -> Option<String> {
@@ -198,6 +216,24 @@ struct InjectorInner {
     #[cfg(all(feature = "thread-safe", feature = "lock-free"))]
     pub(crate) named_instances: DashMap<NamedTypeKey, Shared<dyn Any + Send + Sync>>,
 
+    #[cfg(all(feature = "dynamic", not(feature = "lock-free")))]
+    pub(crate) dynamic_providers: Store<HashMap<String, Shared<DynamicProvider>>>,
+    #[cfg(all(feature = "dynamic", not(feature = "lock-free")))]
+    pub(crate) graph_dynamic_providers: Store<HashMap<String, DynamicProviderGraphMeta>>,
+    #[cfg(all(feature = "dynamic", not(feature = "lock-free")))]
+    pub(crate) dynamic_instances: Store<HashMap<String, Shared<dyn Any + Send + Sync>>>,
+    #[cfg(all(feature = "dynamic", feature = "lock-free"))]
+    pub(crate) dynamic_providers: DashMap<String, Shared<DynamicProvider>>,
+    #[cfg(all(feature = "dynamic", feature = "lock-free"))]
+    pub(crate) graph_dynamic_providers: DashMap<String, DynamicProviderGraphMeta>,
+    #[cfg(all(feature = "dynamic", feature = "lock-free"))]
+    pub(crate) dynamic_instances: DashMap<String, Shared<dyn Any + Send + Sync>>,
+
+    #[cfg(all(feature = "eager-resolution", not(feature = "lock-free")))]
+    pub(crate) eager_resolvers: Store<HashMap<String, EagerResolverFn>>,
+    #[cfg(all(feature = "eager-resolution", feature = "lock-free"))]
+    pub(crate) eager_resolvers: DashMap<String, EagerResolverFn>,
+
     #[cfg(feature = "metrics")]
     pub(crate) metrics: Shared<MetricsState>,
 }
@@ -243,6 +279,10 @@ impl Clone for Injector {
 #[cfg(all(test, feature = "async-factory"))]
 mod async_factory_tests;
 mod core_lifecycle;
+#[cfg(all(test, feature = "dynamic"))]
+mod dynamic_tests;
+#[cfg(all(test, feature = "eager-resolution"))]
+mod eager_resolution_tests;
 mod graph_state;
 mod graph_validation;
 
@@ -259,6 +299,8 @@ mod nts_resolve_sync;
 #[cfg(not(feature = "thread-safe"))]
 mod nts_storage;
 
+#[cfg(feature = "dynamic")]
+mod ts_dynamic;
 #[cfg(feature = "thread-safe")]
 mod ts_instance_factory;
 #[cfg(feature = "thread-safe")]
@@ -267,6 +309,8 @@ mod ts_provider_lookup;
 mod ts_registration;
 #[cfg(feature = "thread-safe")]
 mod ts_resolve_async;
+#[cfg(feature = "eager-resolution")]
+mod ts_resolve_eager;
 #[cfg(feature = "thread-safe")]
 mod ts_resolve_sync;
 #[cfg(feature = "thread-safe")]
